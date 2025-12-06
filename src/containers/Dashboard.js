@@ -131,26 +131,33 @@ export default class {
   }
 
   handleShowTickets(e, bills, index) {
-    if (this.counter === undefined || this.index !== index) this.counter = 0
-    if (this.index === undefined || this.index !== index) this.index = index
-    if (this.counter % 2 === 0) {
-      $(`#arrow-icon${this.index}`).css({ transform: 'rotate(0deg)'})
-      $(`#status-bills-container${this.index}`)
-        .html(cards(filteredBills(bills, getStatus(this.index))))
-      this.counter ++
+
+    // retrieve right arrow and tab
+    const arrowIconB = $(`#arrow-icon${index}`);
+    const container = $(`#status-bills-container${index}`)
+
+    // Check for the state of the clicked tab
+      //  (if true tab is opened)
+      //  (if false tab is closed)
+    const isOpen = container.html().trim() !== ""
+
+    //If isOpen we close the tab(make it empty)
+    if (isOpen) {
+         arrowIconB.css({ transform: 'rotate(90deg)'})
+        container.html("")
+    //Else: we open the tab and fill it wth the right bills
     } else {
-      $(`#arrow-icon${this.index}`).css({ transform: 'rotate(90deg)'})
-      $(`#status-bills-container${this.index}`)
-        .html("")
-      this.counter ++
+      arrowIconB.css({ transform: 'rotate(0deg)'})
+      container.html(cards(filteredBills(bills, getStatus(index))))
     }
 
-    bills.forEach(bill => {
+      // Cut the Listener && call the edit method
+        bills.forEach(bill => {
+      $(`#open-bill${bill.id}`).off('click');
       $(`#open-bill${bill.id}`).click((e) => this.handleEditTicket(e, bill, bills))
     })
 
     return bills
-
   }
 
   getBillsAllUsers = () => {
