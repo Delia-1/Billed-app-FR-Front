@@ -1,8 +1,8 @@
-import VerticalLayout from './VerticalLayout.js'
-import ErrorPage from "./ErrorPage.js"
-import LoadingPage from "./LoadingPage.js"
+import VerticalLayout from "./VerticalLayout.js";
+import ErrorPage from "./ErrorPage.js";
+import LoadingPage from "./LoadingPage.js";
 
-import Actions from './Actions.js'
+import Actions from "./Actions.js";
 
 const row = (bill) => {
   return (`
@@ -20,11 +20,14 @@ const row = (bill) => {
   }
 
 const rows = (data) => {
-  return (data && data.length) ? data.map(bill => row(bill)).join("") : ""
-}
+  if (!data) return "";
+  // Sort bills by date in descending order (newest first)
+  data.sort((a, b) => new Date(b.date) - new Date(a.date));
+  return data && data.length ? data.map((bill) => row(bill)).join("") : "";
+};
 
 export default ({ data: bills, loading, error }) => {
-  
+
   const modal = () => (`
     <div class="modal fade" id="modaleFile" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
@@ -40,14 +43,14 @@ export default ({ data: bills, loading, error }) => {
         </div>
       </div>
     </div>
-  `)
+    `)
 
   if (loading) {
     return LoadingPage()
   } else if (error) {
     return ErrorPage(error)
   }
-  
+
   return (`
     <div class='layout'>
       ${VerticalLayout(120)}
