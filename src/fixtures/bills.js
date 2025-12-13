@@ -40,8 +40,8 @@ export const bills = [{
   "status": "accepted",
   "date": "2003-03-03",
   "commentary": "",
-  "fileName": "facture-client-php-exportee-dans-document-pdf-enregistre-sur-disque-dur.png",
-  "fileUrl": "https://test.storage.tld/v0/b/billable-677b6.a…dur.png?alt=media&token=571d34cb-9c8f-430a-af52-66221cae1da3"
+  "fileName": null,
+  "fileUrl": null
 },
 {
   "id": "qcCK3SzECmaZAGRrHjaC",

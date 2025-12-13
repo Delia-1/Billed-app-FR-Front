@@ -9,6 +9,7 @@ import Bills from "../containers/Bills.js"
 import {localStorageMock} from "../__mocks__/localStorage.js";
 import { ROUTES, ROUTES_PATH } from "../constants/routes"
 import $ from 'jquery'
+import '@testing-library/jest-dom'
 
 import router from "../app/Router.js";
 
@@ -40,6 +41,7 @@ describe("Given I am connected as an employee", () => {
     })
   })
 
+   // Integragion test for the modal behaviour
   describe("When I am on the bills Page, and I click on the eye icon on a bill", () => {
     test("Then a modale appear", () => {
       // Mock the Bottstrap modal function
@@ -70,7 +72,74 @@ describe("Given I am connected as an employee", () => {
       const modalElement = document.getElementById("modaleFile")
       expect(modalElement).toBeTruthy()
     })
+
+    test("Then it should display the bill image when fileUrl is valid", () => {
+      $.fn.modal = jest.fn()
+      document.body.innerHTML = BillsUI({data: bills})
+      const onNavigate = (pathname) => {
+        document.body.innerHTML = ROUTES({ pathname })
+      }
+      const billsInstance = new Bills({
+        document,
+        onNavigate,
+        bills
+      })
+      const iconEye = screen.getAllByTestId("icon-eye")
+
+      // I know that the second bill is correctly formated
+      const firstIconEye = iconEye[2]
+      const handleClickIconEye = jest.fn(() => billsInstance.handleClickIconEye(firstIconEye))
+      firstIconEye.addEventListener("click", handleClickIconEye )
+      fireEvent.click(firstIconEye)
+      // Retrieve image
+      const image = screen.getByAltText("Bill")
+      expect(image).toBeInTheDocument()
+      expect(image.getAttribute("src")).toBe(bills[2].fileUrl)
+      // Check if the extension is correct
+      const rightExtensions = ["jpg", "jpeg", "png"]
+      const pathExt = bills[2].fileUrl.split('?')[0].split('.').pop().toLowerCase()
+      expect(rightExtensions.includes(pathExt)).toBeTruthy()
+    })
+
+    test("Then modal should open even when bill has an invalid image URL and the app remains stable", () => {
+       $.fn.modal = jest.fn()
+      document.body.innerHTML = BillsUI({data: bills})
+      const onNavigate = (pathname) => {
+        document.body.innerHTML = ROUTES({ pathname })
+      }
+      const billsInstance = new Bills({
+        document,
+        onNavigate,
+        bills
+      })
+      const iconEye = screen.getAllByTestId("icon-eye")
+
+      // I selected the icon bind to the null bill
+      const firstIconEye = iconEye[1]
+      const handleClickIconEye = jest.fn(() => billsInstance.handleClickIconEye(firstIconEye))
+      firstIconEye.addEventListener("click", handleClickIconEye )
+      fireEvent.click(firstIconEye)
+
+      const modalElement = document.getElementById("modaleFile")
+      expect(modalElement).toBeTruthy()
+
+      const image = screen.getByAltText("Bill")
+      expect(image).toBeInTheDocument()
+      const pathExt = bills[1].fileUrl
+      expect(pathExt).toBeNull()
+
+      const closeBtn = document.querySelector('[data-dismiss="modal"]')
+      fireEvent.click(closeBtn)
+      // App do not breaks 
+      expect(screen.getByText('Mes notes de frais')).toBeTruthy()
+
+    })
   })
+
+
+
+
+
 
   describe("When I am on Bills Page", () => {
     test("Then bill icon in vertical layout should be highlighted", async () => {
