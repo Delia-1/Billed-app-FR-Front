@@ -130,34 +130,68 @@ export default class {
     this.onNavigate(ROUTES_PATH['Dashboard'])
   }
 
-  handleShowTickets(e, bills, index) {
+  // handleShowTickets(e, bills, index) {
 
-    // retrieve right arrow and tab
-    const arrowIconB = $(`#arrow-icon${index}`);
-    const container = $(`#status-bills-container${index}`)
+  //   // retrieve right arrow and tab
+  //   const arrowIconB = $(`#arrow-icon${index}`);
+  //   const container = $(`#status-bills-container${index}`)
 
-    // Check for the state of the clicked tab
-      //  (if true tab is opened)
-      //  (if false tab is closed)
-    const isOpen = container.html().trim() !== ""
+  //   // Check for the state of the clicked tab
+  //     //  (if true tab is opened)
+  //     //  (if false tab is closed)
+  //   const isOpen = container.html().trim() !== "" // sur html vide pas ideal verifier la presence d'un elem dom
 
-    //If isOpen we close the tab(make it empty)
-    if (isOpen) {
-         arrowIconB.css({ transform: 'rotate(90deg)'})
-        container.html("")
-    //Else: we open the tab and fill it wth the right bills
+  //   //If isOpen we close the tab(make it empty)
+  //   if (isOpen) {
+  //        arrowIconB.css({ transform: 'rotate(90deg)'})
+  //       container.html("")
+  //   // Else: we open the tab and fill it wth the right bills
+  //   } else {
+  //     arrowIconB.css({ transform: 'rotate(0deg)'})
+  //     container.html(cards(filteredBills(bills, getStatus(index))))
+  //   }
+
+  //     // Cut the Listener && call the edit method
+  //       bills.forEach(bill => {
+  //         // if (index === 1 ) {
+
+  //         // }
+  //         // Conditionner en fonction de l'index ?? Pour eviter handler supplémentaires
+  //         // Tester avec l'ancienne logique
+  //     $(`#open-bill${bill.id}`).off('click');
+  //     $(`#open-bill${bill.id}`).click((e) => this.handleEditTicket(e, bill, bills))
+  //   })
+
+  //   return bills
+  // }
+
+   handleShowTickets(e, bills, index) {
+    if (this.counter === undefined || this.index !== index) this.counter = 0
+    if (this.index === undefined || this.index !== index) this.index = index
+    if (this.counter % 2 === 0) {
+      $(`#arrow-icon${this.index}`).css({ transform: 'rotate(0deg)'})
+      $(`#status-bills-container${this.index}`)
+        .html(cards(filteredBills(bills, getStatus(this.index))))
+      this.counter ++
     } else {
-      arrowIconB.css({ transform: 'rotate(0deg)'})
-      container.html(cards(filteredBills(bills, getStatus(index))))
+      $(`#arrow-icon${this.index}`).css({ transform: 'rotate(90deg)'})
+      $(`#status-bills-container${this.index}`)
+        .html("")
+      this.counter ++
     }
 
-      // Cut the Listener && call the edit method
-        bills.forEach(bill => {
-      $(`#open-bill${bill.id}`).off('click');
-      $(`#open-bill${bill.id}`).click((e) => this.handleEditTicket(e, bill, bills))
-    })
+  // Retrieve the bills for the opened category
+  const filtered = filteredBills(bills, getStatus(this.index));
+  // Attach a click event handler to each bill in the category
+  filtered.forEach(bill => {
+    // Remove any previous click event handlers to avoid duplicates
+    $(`#open-bill${bill.id}`).off('click');
+    // Attach a new click event handler to display the bill details
+    $(`#open-bill${bill.id}`).click((e) => this.handleEditTicket(e, bill, bills));
+  });
 
     return bills
+
   }
 
   getBillsAllUsers = () => {
