@@ -24,17 +24,18 @@ export default class NewBill {
     const filePath = e.target.value.split(/\\/g);
     const fileName = filePath[filePath.length - 1];
 
-    // Declare what extension are allowed
+    // Declare what extension are allowedf
     const authExt = ["jpg", "jpeg", "png"];
 
     //Retrieve extension
-    const pathExt = fileName.match(/\.([a-zA-Z0-9]+)$/)[1];
+  const match = fileName.match(/\.([a-zA-Z0-9]+)$/);
+  const pathExt = match ? match[1].toLowerCase() : "";
 
     // Remove previous error message
     const existingError = this.document.querySelector(".error-message");
     if (existingError) existingError.remove();
 
-    // File extennsion check
+    // File extension check
     if (!authExt.includes(pathExt)) {
       // Display a comprehensive error message
       const fileInput = this.document.querySelector(
@@ -42,11 +43,13 @@ export default class NewBill {
       );
       const errorMessage = this.document.createElement("small");
       errorMessage.className = "error-message";
+      errorMessage.setAttribute("data-testid", "error-message");
       errorMessage.innerText =
         "* Veuillez sélectionner un fichier jpg, jpeg ou png.";
       fileInput.after(errorMessage);
       // Reset input
       fileInput.value = "";
+      return
     }
 
     const formData = new FormData();
