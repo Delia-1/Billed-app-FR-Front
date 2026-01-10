@@ -2,24 +2,20 @@
  * @jest-environment jsdom
  */
 
-import { fireEvent, getAllByText, screen, waitFor } from "@testing-library/dom";
+import { fireEvent, screen, waitFor } from "@testing-library/dom";
 import BillsUI from "../views/BillsUI.js";
 import { bills } from "../fixtures/bills.js";
 import Bills from "../containers/Bills.js";
 import { localStorageMock } from "../__mocks__/localStorage.js";
 import { ROUTES, ROUTES_PATH } from "../constants/routes";
-import $, { data, escapeSelector } from "jquery";
 import "@testing-library/jest-dom";
 import mockStore from "../__mocks__/store";
-import { formatDate, formatStatus } from "../app/format.js";
-import router from "../app/Router.js";
+import router from "../app/Router";
 
-// afterEach(() => {
-//   document.body.innerHTML = ""
-//   jest.clearAllMocks()
-//   localStorage.clear()
-//   $.fn.modal = undefined;
-// })
+afterEach(() => {
+  document.body.innerHTML = "";
+  jest.clearAllMocks();
+});
 
 jest.mock("../app/Store", () => mockStore);
 
@@ -46,7 +42,7 @@ describe("Given I am connected as an employee", () => {
       expect(() => {
         new Bills({
           document,
-          onNavigate: jest.fn,
+          onNavigate: jest.fn(),
           store: null,
           localStorage: window.localStorage,
         });
@@ -225,15 +221,6 @@ describe("Given I am connected as an employee", () => {
         expect(firstRow).toHaveTextContent(firstBillName);
         expect(firstRow).toHaveTextContent(firstBillAmount);
         expect(firstRow).toHaveTextContent(firstBillType);
-
-        // I check the formated status ans date later
-        // check status and date are formated
-        // expect(result[0]).toMatchObject({
-        //   status: formatStatus(snapshot[0].status),
-        // })
-        // expect(result[0]).toMatchObject({
-        //   date: formatDate(snapshot[0].date),
-        // })
       });
 
       test("Then bills are fetched even with empty data", async () => {
@@ -249,7 +236,6 @@ describe("Given I am connected as an employee", () => {
         // Call and run the function
         const result = await billsInstance.getBills();
 
-        console.log("listSpy", result);
         // Expect an empty array if no bills
         expect(result).toEqual([]);
 
@@ -282,7 +268,6 @@ describe("Given I am connected as an employee", () => {
       // });
 
       describe("When data is fetched the status is formated correctly", () => {
-
         test("Then i should have the same number of pending bills in the mock and in the processed data", async () => {
           // Instantiate bills
           const billsInstance = new Bills({
@@ -349,26 +334,30 @@ describe("Given I am connected as an employee", () => {
           expect(acceptedStatusElements.length).toBe(1);
         });
 
-        test("Then bills should be ordered from earliest to latest", () => {
-          const unsortedBills = [
-            { date: "2023-10-01" },
-            { date: "2023-12-01" },
-            { date: "2023-11-01" },
-          ];
-          // Render ui xith data not sorted
-          document.body.innerHTML = BillsUI({ data: unsortedBills });
+        test("Then bills should be ordered from newest to oldest", async () => {
+          // Tous les mocks a utilisr depuis fichié mocké
+          // const unsortedBills = [
+          //   { date: "2023-10-01" },
+          //   { date: "2023-12-01" },
+          //   { date: "2023-11-01" },
+          // ];
+          const billsFromApi = await mockStore.bills().list();
 
-          // extract UI dates displayed in the ui
-          const dates = screen
-            .getAllByText(
-              /^(19|20)\d\d[- /.](0[1-9]|1[012])[- /.](0[1-9]|[12][0-9]|3[01])$/i
-            )
-            .map((a) => a.innerHTML);
+          // Render ui
+          document.body.innerHTML = BillsUI({ data: billsFromApi });
 
-          // Check that dates are sorted from the oldest to the newest
-          const antiChrono = (a, b) => (a < b ? 1 : -1);
-          const datesSorted = [...dates].sort(antiChrono);
-          expect(dates).toEqual(datesSorted);
+          // Retrieve displayed dates(third column) skipping header row
+          const rows = screen.getAllByRole("row").slice(1); // skip header row
+          const dates = rows.map(
+            (row) => row.querySelectorAll("td")[2].textContent
+          );
+
+          // Check date order
+          for (let i = 0; i < dates.length - 1; i++) {
+            expect(new Date(dates[i]).getTime()).toBeGreaterThanOrEqual(
+              new Date(dates[i + 1]).getTime()
+            );
+          }
         });
       });
     });
@@ -400,6 +389,67 @@ describe("Given I am connected as an employee", () => {
           consoleSpy.mockRestore();
           formatDateMock.mockRestore();
         });
+      });
+    });
+  });
+});
+
+// get integration test
+describe("Given I am a user connected as Employee", () => {
+  describe("When I navigate to Bills page", () => {
+    beforeEach(() => {
+      jest.spyOn(mockStore, "bills");
+      Object.defineProperty(window, "localStorage", {
+        value: localStorageMock,
+      });
+      window.localStorage.setItem(
+        "user",
+        JSON.stringify({
+          type: "Employee",
+          email: "a@a",
+        })
+      );
+      const root = document.createElement("div");
+      root.setAttribute("id", "root");
+      document.body.appendChild(root);
+      router();
+    });
+
+    test("fetches bills from mock API GET", async () => {
+      window.onNavigate(ROUTES_PATH.Bills);
+
+      // Title match the Bills page title
+      await waitFor(() => screen.getByText("Mes notes de frais"));
+
+      // Check that the tables contains rows
+      const tbody = screen.getByTestId("tbody");
+      expect(tbody.querySelectorAll("tr").length).toBeGreaterThan(0);
+
+      // Check that a bill name is displayed on the page
+      expect(document.body.textContent).toContain("vol retour");
+    });
+    describe("When an error occurs on API", () => {
+      test("fetches bills from API and fails with 404 error message", async () => {
+        mockStore.bills.mockImplementationOnce(() => ({
+          list: () => Promise.reject(new Error("Erreur 404")),
+        }));
+        window.onNavigate(ROUTES_PATH.Bills);
+        await new Promise(process.nextTick);
+
+        const message = screen.getByText(/Erreur 404/);
+        expect(message).toBeTruthy();
+      });
+
+      test("fetches bills from API and fails with 500 error message", async () => {
+        mockStore.bills.mockImplementationOnce(() => ({
+          list: () => Promise.reject(new Error("Erreur 500")),
+        }));
+
+        window.onNavigate(ROUTES_PATH.Bills);
+        await new Promise(process.nextTick);
+
+        const message = screen.getByText(/Erreur 500/);
+        expect(message).toBeTruthy();
       });
     });
   });
