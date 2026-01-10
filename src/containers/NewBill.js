@@ -28,8 +28,8 @@ export default class NewBill {
     const authExt = ["jpg", "jpeg", "png"];
 
     //Retrieve extension
-  const match = fileName.match(/\.([a-zA-Z0-9]+)$/);
-  const pathExt = match ? match[1].toLowerCase() : "";
+    const match = fileName.match(/\.([a-zA-Z0-9]+)$/);
+    const pathExt = match ? match[1].toLowerCase() : "";
 
     // Remove previous error message
     const existingError = this.document.querySelector(".error-message");
@@ -49,7 +49,7 @@ export default class NewBill {
       fileInput.after(errorMessage);
       // Reset input
       fileInput.value = "";
-      return
+      return;
     }
 
     const formData = new FormData();
@@ -66,21 +66,31 @@ export default class NewBill {
           noContentType: true,
         },
       })
-      .then(({ fileUrl, key }) => {
+      .then((response) => {
+        const { filePath, key } = response;
         this.billId = key;
-        this.fileUrl = fileUrl;
+        this.fileUrl = filePath;
         this.fileName = fileName;
       })
-      .catch((error) => console.error(error));
+      .catch((error) => console.error("File upload error:", error));
   };
 
   handleSubmit = (e) => {
     e.preventDefault();
 
-    console.log(
-      'e.target.querySelector(`input[data-testid="datepicker"]`).value',
-      e.target.querySelector(`input[data-testid="datepicker"]`).value
-    );
+    if (!this.fileUrl) {
+      const errorMessage = this.document.createElement("small");
+      errorMessage.className = "error-message";
+      errorMessage.setAttribute("data-testid", "error-message");
+      errorMessage.innerText =
+        "* Veuillez attendre que le fichier soit téléversé avant de soumettre.";
+      const form = this.document.querySelector(
+        `form[data-testid="form-new-bill"]`
+      );
+      form.appendChild(errorMessage);
+      return;
+    }
+
     const email = JSON.parse(localStorage.getItem("user")).email;
     const bill = {
       email,
@@ -100,7 +110,7 @@ export default class NewBill {
       fileName: this.fileName,
       status: "pending",
     };
-    if (bill.file === "") {
+    if (!this.fileName || !this.fileUrl) {
       return;
     }
     this.updateBill(bill);
