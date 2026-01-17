@@ -45,7 +45,7 @@ describe("Given I am connected as an employee", () => {
       test("Then it should retrieve the email from localStorage", () => {
         // Stock a new user value in the localStorage
         const user = { type: "Employee", email: "a@b" };
-        window.localStorage.setItem("user", JSON.stringify(user)); // Stocke l'objet JSON
+        window.localStorage.setItem("user", JSON.stringify(user));
 
         // Retrieve raw value from localStorage
         // "{\"type\":\"Employee\",\"email\":\"a@b\"}"
@@ -56,10 +56,8 @@ describe("Given I am connected as an employee", () => {
         const parsedOnce = JSON.parse(storedUser);
         const parsedUser =
           typeof parsedOnce === "string" ? JSON.parse(parsedOnce) : parsedOnce;
-        // console.log("check localStorage",parsedUser)
 
         // Check mail
-
         expect(parsedUser.email).toBe("a@b");
       });
     });
@@ -113,13 +111,14 @@ describe("Given I am connected as an employee", () => {
       });
 
       test("Then handleChangeFile should be triggered with a valid file", async () => {
+        // Wait for the UI to be ready
         await waitFor(() => screen.getByTestId("file"));
         const inputFile = screen.getByTestId("file");
 
         inputFile.addEventListener("change", handleChangeFile);
 
         const testFile = new File(["test"], "test.jpg", { type: "image/jpg" });
-
+        // Lauch action
         fireEvent.change(inputFile, {
           target: {
             files: [testFile],
@@ -178,12 +177,12 @@ describe("Given I am connected as an employee", () => {
         const inputFile = screen.getByTestId("file");
         const testFile = new File(["test"], "test.jpg", { type: "image/jpg" });
 
-        // ✅ set files sans toucher à value
+        // Set files sans toucher à value
         Object.defineProperty(inputFile, "files", {
           value: [testFile],
         });
 
-        // ✅ event fake avec value (sans setter input.value)
+        // Event fake avec value (sans setter input.value)
         const fakeEvent = {
           preventDefault: jest.fn(),
           target: { value: "C:\\fakepath\\test.jpg" },
@@ -215,11 +214,10 @@ describe("Given I am connected as an employee", () => {
           value: localStorageMock,
         });
 
-        /**
-         * Force the value returned by localStorage.getItem("user")
-         * This is required because handleSubmit reads from the global localStorage
-         * and not from the injected this.localStorage.
-         */
+        // Force the value returned by localStorage.getItem("user")
+        //This is required because handleSubmit reads from the global localStorage
+        //and not from the injected this.localStorage.
+
         jest
           .spyOn(window.localStorage, "getItem")
           .mockReturnValue(JSON.stringify({ email: "test@test.com" }));
@@ -310,7 +308,7 @@ describe("Given I am connected as an employee", () => {
         localStorage: window.localStorage,
       });
 
-      // Remplir le formulaire (sans définir fileUrl/fileName)
+      // Fill the form except fileUrl and fileName
       fireEvent.change(screen.getByTestId("expense-type"), {
         target: { value: "Transports" },
       });
@@ -336,20 +334,19 @@ describe("Given I am connected as an employee", () => {
     });
 
     describe("When the API successfully updates the bill", () => {
-      test("Submit new bill navigates to Bills and displays the created bill (Taxi)", async () => {
+      test(" Then Submiting a new bill navigates to Bills and displays the created bill (Taxi)", async () => {
         document.body.innerHTML = `
-    <div id="root"></div>
-    <div id="layout-icon1"></div>
-    <div id="layout-icon2"></div>
-  `;
+          <div id="root"></div>
+          <div id="layout-icon1"></div>
+          <div id="layout-icon2"></div>
+        `;
 
-        // We simulate a "DB" in memory that will be returned by list()
+        // Simulate a "DB"  that will be returned by list()
         const billsDB = [];
 
         const updateMock = jest.fn(() => Promise.resolve());
         const listMock = jest.fn(() => Promise.resolve(billsDB));
 
-        const originalBills = mockStore.bills;
         mockStore.bills = jest.fn(() => ({
           update: updateMock,
           list: listMock,
@@ -395,7 +392,7 @@ describe("Given I am connected as an employee", () => {
           target: { value: "test" },
         });
 
-        // IMPORTANT: push the "created" bill into our DB BEFORE we navigate to Bills
+        // Push the "created" bill into our DB BEFORE we navigate to Bills
         billsDB.push({
           date: "2023-04-01",
           name: "Taxi",
@@ -408,10 +405,9 @@ describe("Given I am connected as an employee", () => {
         fireEvent.submit(screen.getByTestId("form-new-bill"));
 
         await waitFor(() => {
-          screen.debug();
           expect(updateMock).toHaveBeenCalled();
           expect(screen.getByText("Mes notes de frais")).toBeInTheDocument();
-          expect(screen.getByText("Taxi")).toBeInTheDocument(); // ✅ visible now
+          expect(screen.getByText("Taxi")).toBeInTheDocument();
         });
       });
     });
@@ -432,12 +428,11 @@ describe("Given I am connected as an employee", () => {
           localStorage: window.localStorage,
         });
 
-        // Le submit utilise fileUrl / fileName / billId
+        // Submit need fileUrl, fileName, and billId
         newBill.billId = "1234";
         newBill.fileUrl = "https://localhost:3456/images/test.jpg";
         newBill.fileName = "test.jpg";
 
-        // Remplir les champs nécessaires
         fireEvent.change(screen.getByTestId("expense-type"), {
           target: { value: "Transports" },
         });
@@ -464,25 +459,23 @@ describe("Given I am connected as an employee", () => {
           .spyOn(console, "error")
           .mockImplementation(() => {});
 
-        // Submit réel (pas d’event fake)
+        // Real submit
         fireEvent.submit(screen.getByTestId("form-new-bill"));
 
-        // Dans TON code, la navigation est appelée même si l’API échoue
+        // In the code nav is called even if API fails
         expect(onNavigate).toHaveBeenCalledWith(ROUTES_PATH["Bills"]);
 
-        // Et l’erreur doit être loggée après la promesse rejetée
+        // Error must be logged and promise rejected
         await waitFor(() => {
           expect(consoleErrorSpy).toHaveBeenCalled();
         });
 
         consoleErrorSpy.mockRestore();
-        // mockStore.bills = originalBills;
       });
     });
 
     describe("When the API returns a 404 error during bill update", () => {
       test("Then it should log the error (console.error)", async () => {
-        const originalBills = mockStore.bills;
         document.body.innerHTML = NewBillUI();
 
         mockStore.bills = jest.fn(() => ({
@@ -530,7 +523,6 @@ describe("Given I am connected as an employee", () => {
 
         fireEvent.submit(screen.getByTestId("form-new-bill"));
 
-        // selon ton code: navigation même si l'API échoue
         expect(onNavigate).toHaveBeenCalledWith(ROUTES_PATH["Bills"]);
 
         await waitFor(() => {
@@ -538,7 +530,6 @@ describe("Given I am connected as an employee", () => {
         });
 
         consoleErrorSpy.mockRestore();
-        // mockStore.bills = originalBills;
       });
     });
   });

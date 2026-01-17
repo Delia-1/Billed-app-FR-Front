@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 
-import { fireEvent, screen, waitFor } from "@testing-library/dom";
+import { fireEvent, screen, waitFor, userEvent } from "@testing-library/dom";
 import BillsUI from "../views/BillsUI.js";
 import { bills } from "../fixtures/bills.js";
 import Bills from "../containers/Bills.js";
@@ -25,12 +25,12 @@ describe("Given I am connected as an employee", () => {
       const html = BillsUI({ data: [] });
       document.body.innerHTML = html;
 
-      // Initialize Bills
+      // Initialize Bills Mock
       new Bills({
         document,
         onNavigate: jest.fn(),
         store: null,
-        localStorage: window.localStorage,
+        localStorage: localStorageMock,
       });
 
       // Force a null return for the button (buttonNewBill is initialized first)
@@ -47,9 +47,10 @@ describe("Given I am connected as an employee", () => {
           localStorage: window.localStorage,
         });
       }).not.toThrow();
+
+      expect(screen.getByText("Mes notes de frais")).toBeInTheDocument();
       // Restore mocks
       querySelectorSpy.mockRestore();
-      localStorage.clear();
     });
   });
 });
@@ -57,12 +58,12 @@ describe("Given I am connected as an employee", () => {
 describe("Given I am connected as an employee", () => {
   describe("When I am on the bill page, and I click the 'Nouvelle note de frais' button", () => {
     test("Then I should be sent on NewBills page", () => {
-      // Define the path
+      // Define the current path
       const pathname = ROUTES_PATH["Bills"];
       document.body.innerHTML = ROUTES({
         pathname,
       });
-
+      // initialize onNavigate method
       const onNavigate = (pathname) => {
         document.body.innerHTML = ROUTES({ pathname });
       };
@@ -81,7 +82,7 @@ describe("Given I am connected as an employee", () => {
 
   // Integragion test for the modal behaviour
   describe("When I am on the bills Page, and I click on the eye icon on a bill", () => {
-    test("Then a modale appear", () => {
+    test("Then the modal opening logic is triggered", () => {
       // Mock the Bootstrap modal function
       $.fn.modal = jest.fn();
       // Render the Bill UI with mocked data
@@ -89,7 +90,9 @@ describe("Given I am connected as an employee", () => {
       // Instantiate Bills container with mocked data
       new Bills({
         document,
-        // onNavigate,
+        onNavigate: jest.fn(),
+        store: null,
+        localStorage: localStorageMock,
       });
 
       // Retrieve first icon-eye
@@ -103,7 +106,7 @@ describe("Given I am connected as an employee", () => {
       expect(screen.getByText("Justificatif")).toBeInTheDocument();
     });
 
-    test("Then it should display the bill image when fileUrl is valid", () => {
+    test("Then the bill image src is correctly set when fileUrl is valid", () => {
       // Mock the Bootstrap modal function
       $.fn.modal = jest.fn();
       // Data from fixture cause just display test no call on backend
@@ -131,7 +134,7 @@ describe("Given I am connected as an employee", () => {
       expect(rightExtensions.includes(pathExt)).toBeTruthy();
     });
 
-    test("Then modal should open even when bill has an invalid image URL and the app remains stable", () => {
+    test("Then modal should be triggered even when bill has an invalid image URL and the app remains stable", () => {
       $.fn.modal = jest.fn();
       document.body.innerHTML = BillsUI({ data: bills });
       new Bills({
@@ -178,17 +181,14 @@ describe("Given I am connected as an employee", () => {
       window.onNavigate(ROUTES_PATH.Bills);
       await waitFor(() => screen.getByTestId("icon-window"));
       const windowIcon = screen.getByTestId("icon-window");
-      //to-do write expect expression
       expect(windowIcon.classList.contains("active-icon")).toBe(true);
     });
 
-    // GetBills
     describe("when there is data to display", () => {
       test("Then getBills returns undefined when no store is provided", () => {
         // Simulate a Bills instance without a store
         const billsInstance = new Bills({
           document,
-          // No store
           store: null,
         });
 
@@ -247,26 +247,6 @@ describe("Given I am connected as an employee", () => {
         document.body.innerHTML = "";
       });
 
-      // test("Then bills rows should be displayed in the page", async () => {
-      //   //TODO: Vérifier exactement le html généré textes, icons, status
-      //   // Faire fonctionner le screen.debug et les console.log
-      //   // Il faut que le test soit en erreur afin de visualiser la data voulu
-      //   // Bills mocké ou non?
-
-      //   const snapshot = await mockStore.bills().list();
-
-      //   document.body.innerHTML = BillsUI({ data: snapshot });
-      //   //presence de tr dans tbody
-      //   // Instanciate bills Table Body
-      //   const billsBody = screen.getByTestId("tbody");
-      //   // Instanciate first occurence of a row
-      //   const billsRow = billsBody.getElementsByTagName("tr")[0];
-      //   // Check if the container is filled
-      //   expect(billsBody.children.length).toBeGreaterThan(0);
-      //   // Chek the type of content in billsBody
-      //   expect(billsBody).toContainElement(billsRow);
-      // });
-
       describe("When data is fetched the status is formated correctly", () => {
         test("Then i should have the same number of pending bills in the mock and in the processed data", async () => {
           // Instantiate bills
@@ -287,7 +267,6 @@ describe("Given I am connected as an employee", () => {
           const pendingBills = processedBills.filter(
             (bill) => bill.status === "En attente"
           );
-          // Vérifier combien de fois "En attente" apparaît dans l'UI
           // Check how many time the text "en attente" is displayed in the UI
           const pendingStatusElements = screen.getAllByText("En attente");
           expect(pendingStatusElements.length).toBe(pendingBills.length);
@@ -299,7 +278,6 @@ describe("Given I am connected as an employee", () => {
             document,
             store: mockStore,
           });
-          // Run the function
           const processedBills = await billsInstance.getBills();
 
           document.body.innerHTML = BillsUI({ data: processedBills });
@@ -319,11 +297,11 @@ describe("Given I am connected as an employee", () => {
             document,
             store: mockStore,
           });
-          // Run the function
           const processedBills = await billsInstance.getBills();
 
           document.body.innerHTML = BillsUI({ data: processedBills });
           const tableBody = screen.getByTestId("tbody");
+
           expect(tableBody.children.length).toBe(processedBills.length);
           const acceptedBills = processedBills.filter(
             (bill) => bill.status === "Accepté"
@@ -335,19 +313,13 @@ describe("Given I am connected as an employee", () => {
         });
 
         test("Then bills should be ordered from newest to oldest", async () => {
-          // Tous les mocks a utilisr depuis fichié mocké
-          // const unsortedBills = [
-          //   { date: "2023-10-01" },
-          //   { date: "2023-12-01" },
-          //   { date: "2023-11-01" },
-          // ];
           const billsFromApi = await mockStore.bills().list();
 
           // Render ui
           document.body.innerHTML = BillsUI({ data: billsFromApi });
 
           // Retrieve displayed dates(third column) skipping header row
-          const rows = screen.getAllByRole("row").slice(1); // skip header row
+          const rows = screen.getAllByRole("row").slice(1);
           const dates = rows.map(
             (row) => row.querySelectorAll("td")[2].textContent
           );
@@ -418,7 +390,7 @@ describe("Given I am a user connected as Employee", () => {
     test("fetches bills from mock API GET", async () => {
       window.onNavigate(ROUTES_PATH.Bills);
 
-      // Title match the Bills page title
+      // await title match the Bills page title
       await waitFor(() => screen.getByText("Mes notes de frais"));
 
       // Check that the tables contains rows
@@ -428,6 +400,7 @@ describe("Given I am a user connected as Employee", () => {
       // Check that a bill name is displayed on the page
       expect(document.body.textContent).toContain("vol retour");
     });
+
     describe("When an error occurs on API", () => {
       test("fetches bills from API and fails with 404 error message", async () => {
         mockStore.bills.mockImplementationOnce(() => ({
